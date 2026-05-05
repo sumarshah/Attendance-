@@ -26,3 +26,7 @@ backend/prisma/dev.db
 # Docker / volumes
 postgres_data/
 
+# Old/duplicate folders (do not publish)
+frontend_OLD/
+LIVE_HANDOFF/
+bus-tablet-app/
