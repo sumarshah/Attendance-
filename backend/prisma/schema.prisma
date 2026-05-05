@@ -1,0 +1,329 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum EmployeeStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum PunchType {
+  IN
+  OUT
+}
+
+enum AuthMethod {
+  FACE
+  FINGER
+}
+
+enum IdentifierType {
+  FACE_ID
+  FINGER_ID
+  DEVICE_USER_ID
+}
+
+enum ExceptionSource {
+  DEVICE
+  ADMIN
+}
+
+enum ExceptionReason {
+  DUPLICATE_PUNCH
+  OUT_BEFORE_IN
+  NO_ALLOCATION
+  OUTSIDE_GEOFENCE
+  LOCATION_REQUIRED
+  EMPLOYEE_INACTIVE
+  EMPLOYEE_NOT_FOUND
+  PROJECT_NOT_FOUND
+  DEVICE_INACTIVE
+  MISSING_DEVICE_KEY
+  INVALID_DEVICE_KEY
+  MULTIPLE_ALLOCATIONS
+  INVALID_REQUEST
+  OTHER
+}
+
+enum ConnectorType {
+  GENERIC_WEBHOOK
+  ZKTECO_ADMS
+  ZKTECO_PULL
+  HIKVISION_ISAPI
+  BIOTIME_API
+  ANDROID_TABLET
+}
+
+enum CorrectionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum PermissionKey {
+  DASHBOARD
+  REALTIME_MONITOR
+  TIMESHEET
+  EMPLOYEES
+  SETTINGS
+  ADMIN_ACCESS
+
+  // New (module-based) permissions. Keep older keys above for backward compatibility.
+  ATTENDANCE
+  TIMESHEETS
+  PROJECTS
+  BUSES
+  DEVICES
+  ALLOCATIONS
+  EXCEPTIONS
+  CORRECTIONS
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String
+  password  String
+  role      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  requestedCorrections Correction[] @relation("RequestedCorrections")
+  decidedCorrections   Correction[] @relation("DecidedCorrections")
+  permissions          UserPermission[]
+}
+
+model Employee {
+  id           String         @id @default(uuid())
+  employeeCode String         @unique
+  fullName     String
+  status       EmployeeStatus @default(ACTIVE)
+  phone        String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  allocations Allocation[]
+  punches     AttendancePunch[]
+  identifiers EmployeeIdentifier[]
+  exceptions  AttendanceException[]
+  corrections Correction[]
+}
+
+model Project {
+  id             String   @id @default(uuid())
+  projectCode    String   @unique
+  projectName    String
+  latitude       Float?
+  longitude      Float?
+  geofenceRadius Int?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  allocations Allocation[]
+  punches     AttendancePunch[]
+  exceptions  AttendanceException[]
+  corrections Correction[]
+}
+
+model Bus {
+  id          String   @id @default(uuid())
+  busCode     String   @unique
+  plateNumber String   @unique
+  driverName  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  allocations Allocation[]
+  punches     AttendancePunch[]
+  devices     Device[]
+  exceptions  AttendanceException[]
+  corrections Correction[]
+}
+
+model Allocation {
+  id         String    @id @default(uuid())
+  employeeId String
+  projectId  String
+  busId      String?
+  startDate  DateTime
+  endDate    DateTime?
+  isActive   Boolean   @default(true)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  employee Employee @relation(fields: [employeeId], references: [id])
+  project  Project  @relation(fields: [projectId], references: [id])
+  bus      Bus?     @relation(fields: [busId], references: [id])
+
+  @@index([employeeId])
+  @@index([projectId])
+  @@index([busId])
+}
+
+model AttendancePunch {
+  id         String      @id @default(uuid())
+  employeeId String
+  projectId  String
+  busId      String?
+  punchType  PunchType
+  authMethod AuthMethod?
+  authScore  Float?
+  liveness   Float?
+  punchedAt  DateTime
+  latitude   Float?
+  longitude  Float?
+  deviceId   String?
+  notes      String?
+  createdAt  DateTime    @default(now())
+
+  employee Employee @relation(fields: [employeeId], references: [id])
+  project  Project  @relation(fields: [projectId], references: [id])
+  bus      Bus?     @relation(fields: [busId], references: [id])
+
+  @@index([employeeId, punchedAt])
+  @@index([projectId, punchedAt])
+  @@index([busId, punchedAt])
+}
+
+model Device {
+  id         String    @id @default(uuid())
+  deviceId   String    @unique
+  deviceName String
+  deviceType String
+  busId      String
+  apiKeyHash String?
+  status     Boolean   @default(true)
+  lastSeenAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  bus Bus @relation(fields: [busId], references: [id])
+
+  identifiers EmployeeIdentifier[]
+  exceptions  AttendanceException[]
+
+  @@index([busId])
+}
+
+model EmployeeIdentifier {
+  id              String         @id @default(uuid())
+  employeeId      String
+  identifierType  IdentifierType
+  identifierValue String
+  vendor          String?
+  deviceDbId      String?
+  createdAt       DateTime       @default(now())
+
+  employee Employee @relation(fields: [employeeId], references: [id])
+  device   Device?  @relation(fields: [deviceDbId], references: [id])
+
+  @@index([employeeId])
+  @@index([identifierType, identifierValue])
+}
+
+model AttendanceException {
+  id         String          @id @default(uuid())
+  source     ExceptionSource
+  reason     ExceptionReason
+  message    String
+  rawPayload Json?
+
+  deviceDbId String?
+  deviceId   String?
+  employeeId String?
+  projectId  String?
+  busId      String?
+
+  punchType  PunchType?
+  authMethod AuthMethod?
+  authScore  Float?
+  liveness   Float?
+
+  identifierType  IdentifierType?
+  identifierValue String?
+
+  punchedAt DateTime?
+  latitude  Float?
+  longitude Float?
+
+  resolved       Boolean   @default(false)
+  resolvedAt     DateTime?
+  resolutionNote String?
+
+  createdAt DateTime @default(now())
+
+  device   Device?   @relation(fields: [deviceDbId], references: [id])
+  employee Employee? @relation(fields: [employeeId], references: [id])
+  project  Project?  @relation(fields: [projectId], references: [id])
+  bus      Bus?      @relation(fields: [busId], references: [id])
+
+  @@index([resolved, createdAt])
+  @@index([reason, createdAt])
+  @@index([deviceId, createdAt])
+  @@index([employeeId, createdAt])
+}
+
+model Correction {
+  id     String           @id @default(uuid())
+  status CorrectionStatus @default(PENDING)
+
+  date           DateTime
+  requestedInAt  DateTime?
+  requestedOutAt DateTime?
+  reason         String
+
+  employeeId String
+  projectId  String
+  busId      String?
+
+  requestedByUserId String?
+  decidedByUserId   String?
+  decisionNote      String?
+  decidedAt         DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  employee Employee @relation(fields: [employeeId], references: [id])
+  project  Project  @relation(fields: [projectId], references: [id])
+  bus      Bus?     @relation(fields: [busId], references: [id])
+
+  requestedBy User? @relation("RequestedCorrections", fields: [requestedByUserId], references: [id])
+  decidedBy   User? @relation("DecidedCorrections", fields: [decidedByUserId], references: [id])
+
+  @@index([status, date])
+  @@index([employeeId, date])
+  @@index([projectId, date])
+}
+
+model UserPermission {
+  id        String        @id @default(uuid())
+  userId    String
+  key       PermissionKey
+  createdAt DateTime      @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, key])
+  @@index([userId])
+}
+
+model DeviceConnector {
+  id         String        @id @default(uuid())
+  name       String
+  type       ConnectorType
+  apiKeyHash String?
+  status     Boolean       @default(true)
+  config     Json?
+  lastSeenAt DateTime?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  @@index([type])
+  @@index([status, createdAt])
+}

@@ -1,0 +1,28 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+
+# Secrets (never commit)
+.env
+.env.*
+!.env.production.example
+
+# Node
+**/node_modules/
+**/dist/
+**/.next/
+**/.turbo/
+**/.cache/
+**/*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Prisma
+backend/prisma/dev.db
+
+# Docker / volumes
+postgres_data/
+
