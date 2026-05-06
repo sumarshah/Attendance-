@@ -33,4 +33,9 @@ export class DevicesController {
   rotateKey(@Param('id') id: string) {
     return this.devicesService.rotateKey(id);
   }
+
+  @Post(':id/test-connection')
+  testConnection(@Param('id') id: string) {
+    return this.devicesService.testConnection(id);
+  }
 }
