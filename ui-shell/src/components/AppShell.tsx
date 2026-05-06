@@ -5,6 +5,7 @@ import Icon from './Icon'
 import rccLogoUrl from '../assets/rcc-logo-2018.png'
 import { NAV_SECTIONS } from '../router/nav'
 import { api } from '../lib/api'
+import { onAuthChanged } from '../lib/auth'
 
 export default function AppShell() {
   const loc = useLocation()
@@ -78,17 +79,32 @@ export default function AppShell() {
 
   useEffect(() => {
     let cancelled = false
-    api<{ user: any }>('/auth/me')
-      .then((d) => {
-        if (cancelled) return
-        setMe(d?.user ?? null)
-      })
-      .catch(() => {
-        if (cancelled) return
-        setMe(null)
-      })
+
+    const loadMe = () => {
+      api<{ user: any }>('/auth/me')
+        .then((d) => {
+          if (cancelled) return
+          setMe(d?.user ?? null)
+        })
+        .catch(() => {
+          if (cancelled) return
+          setMe(null)
+        })
+    }
+
+    loadMe()
+
+    const off = onAuthChanged(() => loadMe())
+
+    const onVis = () => {
+      if (document.visibilityState === 'visible') loadMe()
+    }
+    document.addEventListener('visibilitychange', onVis)
+
     return () => {
       cancelled = true
+      off()
+      document.removeEventListener('visibilitychange', onVis)
     }
   }, [])
 
@@ -155,7 +171,7 @@ export default function AppShell() {
                 className="searchInput"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search screens..."
+                placeholder="Search"
                 aria-label="Search screens"
               />
               {query ? (

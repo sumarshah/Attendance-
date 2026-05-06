@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from 'react'
 import PunchStream, { type PunchStreamItem } from '../components/PunchStream'
 import Section from '../components/Section'
 import { DonutCard, MultiLineCard } from '../components/DashboardViz'
-import { api } from '../lib/api'
+import { api, ApiError } from '../lib/api'
 import { useAutoRefresh } from '../lib/useAutoRefresh'
 
 type Employee = { id: string; status: 'ACTIVE' | 'INACTIVE' }
@@ -22,6 +22,7 @@ type Attendance = {
 export default function Home() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [permNote, setPermNote] = useState<string | null>(null)
   const [stream, setStream] = useState<PunchStreamItem[]>([])
   const [today, setToday] = useState({
     activeEmployees: 0,
@@ -63,8 +64,14 @@ export default function Home() {
   const load = useCallback(async () => {
     setBusy(true)
     setError(null)
+    setPermNote(null)
 
     try {
+      const me = await api<{ user: { role?: string; permissions?: string[] } | null }>('/auth/me')
+      const role = me?.user?.role?.toUpperCase() ?? ''
+      const perms = new Set((me?.user?.permissions ?? []).map((p) => String(p).toUpperCase()))
+      const has = (...keys: string[]) => role === 'ADMIN' || keys.some((k) => perms.has(k))
+
       const dateFrom = dateWindow.start.toISOString()
       const dateTo = dateWindow.end.toISOString()
 
@@ -73,14 +80,27 @@ export default function Home() {
       const todayFrom = todayStart.toISOString()
       const todayTo = todayEnd.toISOString()
 
-      const [employees, projects, devices, attendance14, attendanceToday, exceptions] = await Promise.all([
-        api<Employee[]>('/employees'),
-        api<Project[]>('/projects'),
-        api<Device[]>('/devices'),
-        api<Attendance[]>(`/attendance?dateFrom=${encodeURIComponent(dateFrom)}&dateTo=${encodeURIComponent(dateTo)}&take=1000`),
-        api<Attendance[]>(`/attendance?dateFrom=${encodeURIComponent(todayFrom)}&dateTo=${encodeURIComponent(todayTo)}&take=300`),
-        api<ExceptionRow[]>(`/exceptions?dateFrom=${encodeURIComponent(dateFrom)}&dateTo=${encodeURIComponent(dateTo)}`),
-      ])
+      const missing: string[] = []
+
+      const employees = has('EMPLOYEES') ? await api<Employee[]>('/employees') : (missing.push('Employees'), [] as Employee[])
+      const projects = has('PROJECTS') ? await api<Project[]>('/projects') : (missing.push('Projects'), [] as Project[])
+      const devices = has('DEVICES') ? await api<Device[]>('/devices') : (missing.push('Devices'), [] as Device[])
+
+      const attendance14 = has('ATTENDANCE', 'REALTIME_MONITOR')
+        ? await api<Attendance[]>(`/attendance?dateFrom=${encodeURIComponent(dateFrom)}&dateTo=${encodeURIComponent(dateTo)}&take=1000`)
+        : (missing.push('Attendance'), [] as Attendance[])
+
+      const attendanceToday = has('ATTENDANCE', 'REALTIME_MONITOR')
+        ? await api<Attendance[]>(`/attendance?dateFrom=${encodeURIComponent(todayFrom)}&dateTo=${encodeURIComponent(todayTo)}&take=300`)
+        : ([] as Attendance[])
+
+      const exceptions = has('EXCEPTIONS')
+        ? await api<ExceptionRow[]>(`/exceptions?dateFrom=${encodeURIComponent(dateFrom)}&dateTo=${encodeURIComponent(dateTo)}`)
+        : (missing.push('Exceptions'), [] as ExceptionRow[])
+
+      if (missing.length) {
+        setPermNote(`Limited view: missing permission for ${missing.join(', ')}.`)
+      }
 
       const activeEmployees = employees.filter((e) => e.status === 'ACTIVE').length
       const geofenced = projects.filter(
@@ -150,7 +170,11 @@ export default function Home() {
       setHistory({ labels, punches, geofence, duplicate })
       setStream(attendanceToday.slice(0, 80))
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load dashboard data')
+      if (e instanceof ApiError && e.status === 403) {
+        setError('No permission to view dashboard data.')
+      } else {
+        setError(e instanceof Error ? e.message : 'Failed to load dashboard data')
+      }
     } finally {
       setBusy(false)
     }
@@ -211,6 +235,7 @@ export default function Home() {
         <div className="panel span7">
           <Section title="Real-Time Monitor">
             {error ? <div className="callout bad">{error}</div> : null}
+            {permNote ? <div className="callout">{permNote}</div> : null}
             <PunchStream items={stream} />
           </Section>
         </div>

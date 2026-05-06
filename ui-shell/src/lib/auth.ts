@@ -1,4 +1,5 @@
 const TOKEN_KEY = 'rcc_biotime_token_v1'
+const AUTH_CHANGED_EVENT = 'rcc_auth_changed_v1'
 
 export function getToken(): string | null {
   try {
@@ -20,6 +21,11 @@ export function setToken(token: string, persist: boolean) {
   } catch {
     // ignore
   }
+  try {
+    window.dispatchEvent(new Event(AUTH_CHANGED_EVENT))
+  } catch {
+    // ignore
+  }
 }
 
 export function clearToken() {
@@ -28,5 +34,19 @@ export function clearToken() {
     sessionStorage.removeItem(TOKEN_KEY)
   } catch {
     // ignore
+  }
+  try {
+    window.dispatchEvent(new Event(AUTH_CHANGED_EVENT))
+  } catch {
+    // ignore
+  }
+}
+
+export function onAuthChanged(cb: () => void) {
+  try {
+    window.addEventListener(AUTH_CHANGED_EVENT, cb)
+    return () => window.removeEventListener(AUTH_CHANGED_EVENT, cb)
+  } catch {
+    return () => {}
   }
 }
