@@ -61,20 +61,7 @@ export default function ScreenPage(props: { screen: ScreenDef }) {
           </Section>
         </div>
 
-        <div className="panel span4">
-          <Section title="Security" right={<span className="pill">Actions</span>}>
-            <div className="kvGrid kvGridOne">
-              <div className="kv">
-                <div className="kvK">Password</div>
-                <div className="kvV">Managed by Admin/HR</div>
-              </div>
-              <div className="kv">
-                <div className="kvK">Two-factor</div>
-                <div className="kvV">Not enabled</div>
-              </div>
-            </div>
-          </Section>
-        </div>
+        {/* Security is intentionally hidden in this UI stub. */}
       </div>
     </div>
   )
