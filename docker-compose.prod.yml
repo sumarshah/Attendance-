@@ -45,3 +45,4 @@ services:
 
 volumes:
   postgres_data:
+    name: attendance-final_postgres_data

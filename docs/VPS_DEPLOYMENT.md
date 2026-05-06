@@ -81,6 +81,10 @@ docker compose -f docker-compose.prod.yml --env-file .env.production up -d --bui
 docker compose -f docker-compose.prod.yml --env-file .env.production ps
 ```
 
+Warning:
+- Always use `COMPOSE_PROJECT_NAME=attendance-final` (or the provided `start-final.ps1` on Windows).
+- If you run Compose with a different project name, Docker will create a different Postgres volume and the app will look like the database is empty.
+
 Open in browser:
 - `http://YOUR_VPS_IP` (if IP only)
 - `https://YOUR_DOMAIN` (if domain + HTTPS)
@@ -128,4 +132,3 @@ sudo ufw status
 export COMPOSE_PROJECT_NAME=attendance-final
 docker compose -f docker-compose.prod.yml --env-file .env.production exec -T postgres pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB" > attendance_backup.sql
 ```
-
