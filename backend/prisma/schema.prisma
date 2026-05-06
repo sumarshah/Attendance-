@@ -196,6 +196,8 @@ model Device {
   deviceName String
   deviceType String
   busId      String
+  ipAddress  String?
+  port       Int?      @default(4370)
   apiKeyHash String?
   status     Boolean   @default(true)
   lastSeenAt DateTime?

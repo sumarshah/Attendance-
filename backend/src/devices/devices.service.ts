@@ -39,6 +39,8 @@ export class DevicesService {
         deviceName: dto.deviceName,
         deviceType: dto.deviceType,
         busId: dto.busId,
+        ipAddress: dto.ipAddress?.trim() || null,
+        port: dto.port ?? undefined,
         apiKeyHash,
         status: dto.status ?? true,
       },
@@ -95,6 +97,8 @@ export class DevicesService {
           deviceName: dto.deviceName?.trim(),
           deviceType: dto.deviceType?.trim(),
           busId: dto.busId,
+          ipAddress: dto.ipAddress === undefined ? undefined : dto.ipAddress?.trim() || null,
+          port: dto.port === undefined ? undefined : dto.port,
           status: dto.status,
         },
         include: { bus: true },
@@ -138,18 +142,21 @@ export class DevicesService {
   async testConnection(id: string) {
     const device = await this.prisma.device.findUnique({
       where: { id },
-      select: { id: true, deviceId: true },
+      select: { id: true, deviceId: true, ipAddress: true, port: true },
     });
     if (!device) throw new BadRequestException('Device not found');
 
-    const parsed = this.parseIpPort(device.deviceId);
+    const parsed =
+      device.ipAddress?.trim()
+        ? { ip: device.ipAddress.trim(), port: device.port ?? 4370 }
+        : this.parseIpPort(device.deviceId); // backward fallback only
     if (!parsed) {
       return {
         deviceId: device.id,
         ip: null,
         port: null,
         status: 'offline',
-        message: 'Device IP/port not configured. Set Device ID as IP[:port] (example: 192.168.1.10:4370).',
+        message: 'Device IP/port not configured. Set IP Address (and Port) in Device Registry.',
       };
     }
 

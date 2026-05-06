@@ -9,6 +9,8 @@ type Device = {
   deviceName: string
   deviceType: string
   busId?: string
+  ipAddress?: string | null
+  port?: number | null
   status: boolean
   lastSeenAt: string | null
   bus: { busCode: string; plateNumber: string }
@@ -36,6 +38,8 @@ export default function DevicesAdmin() {
   const [deviceType, setDeviceType] = useState('ANDROID_TABLET')
   const [busId, setBusId] = useState('')
   const [status, setStatus] = useState(true)
+  const [ipAddress, setIpAddress] = useState('')
+  const [port, setPort] = useState('4370')
 
   const editingDevice = useMemo(
     () => (editingId ? rows.find((r) => r.id === editingId) ?? null : null),
@@ -74,6 +78,8 @@ export default function DevicesAdmin() {
     setDeviceName('Bus Tablet 001')
     setDeviceType('ANDROID_TABLET')
     setStatus(true)
+    setIpAddress('')
+    setPort('4370')
     if (buses.length > 0) setBusId(buses[0].id)
   }
 
@@ -87,6 +93,8 @@ export default function DevicesAdmin() {
     setDeviceType(d.deviceType)
     setStatus(Boolean(d.status))
     if (d.busId) setBusId(d.busId)
+    setIpAddress(d.ipAddress ?? '')
+    setPort(d.port != null ? String(d.port) : '4370')
   }
 
   async function save(e?: FormEvent) {
@@ -101,6 +109,8 @@ export default function DevicesAdmin() {
         deviceType: deviceType.trim(),
         busId: busId.trim(),
         status,
+        ipAddress: ipAddress.trim() ? ipAddress.trim() : undefined,
+        port: port.trim() ? Number(port) : undefined,
       }
 
       if (mode === 'create') {
@@ -186,6 +196,14 @@ export default function DevicesAdmin() {
                       </option>
                     ))}
                   </select>
+                </label>
+                <label className="field">
+                  <div className="fieldLabel">IP Address</div>
+                  <input className="input" value={ipAddress} onChange={(e) => setIpAddress(e.target.value)} placeholder="192.168.1.10" />
+                </label>
+                <label className="field">
+                  <div className="fieldLabel">Port</div>
+                  <input className="input" value={port} onChange={(e) => setPort(e.target.value)} inputMode="numeric" placeholder="4370" />
                 </label>
                 <label className="field" style={{ gridColumn: '1 / -1' }}>
                   <div className="fieldLabel">Status</div>
