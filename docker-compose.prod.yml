@@ -1,4 +1,6 @@
 services:
+  # IMPORTANT: Do not change COMPOSE_PROJECT_NAME or data will appear lost.
+  # This stack pins the Postgres volume name to keep database data consistent.
   postgres:
     image: postgres:16
     restart: unless-stopped
@@ -21,6 +23,7 @@ services:
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
       FRONTEND_ORIGIN: ${FRONTEND_ORIGIN}
+      FRONTEND_ORIGINS: ${FRONTEND_ORIGIN}
       PORT: 3000
       DEVICE_PUNCH_MODE: ${DEVICE_PUNCH_MODE}
       JWT_SECRET: ${JWT_SECRET}

@@ -14,7 +14,7 @@ export default function AppShell() {
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({})
   const [profileOpen, setProfileOpen] = useState(false)
   const profileRef = useRef<HTMLDivElement | null>(null)
-  const [me, setMe] = useState<{ role?: string; permissions?: string[] } | null>(null)
+  const [me, setMe] = useState<{ id?: string; name?: string; email?: string; role?: string; permissions?: string[] } | null>(null)
   const navMatch = useMemo(() => {
     for (const sec of NAV_SECTIONS) {
       for (const item of sec.items) {
@@ -91,6 +91,15 @@ export default function AppShell() {
       cancelled = true
     }
   }, [])
+
+  const profileName = me?.name?.trim() || 'Account'
+  const profileRole = me?.role?.trim() || ''
+  const initials = (() => {
+    const parts = profileName.split(' ').filter(Boolean)
+    const a = parts[0]?.[0] ?? 'U'
+    const b = parts.length > 1 ? parts[parts.length - 1]?.[0] : ''
+    return (a + b).toUpperCase()
+  })()
 
   const can = (path: string, sectionTitle: string) => {
     const role = me?.role
@@ -246,17 +255,17 @@ export default function AppShell() {
                 aria-expanded={profileOpen}
               >
                 <div className="avatar" aria-hidden="true">
-                  <span>AD</span>
+                  <span>{initials}</span>
                 </div>
                 <div className="profileChipText">
-                  <div className="profileName">Admin</div>
-                  <div className="profileRole">Supervisor</div>
+                  <div className="profileName">{profileName}</div>
+                  {profileRole ? <div className="profileRole">{profileRole}</div> : null}
                 </div>
                 <Icon name="chevronDown" />
               </button>
 
               {profileOpen ? (
-                <div className="profileMenu" role="menu" aria-label="Admin menu">
+                <div className="profileMenu" role="menu" aria-label={`${profileName} menu`}>
                   <button className="profileMenuItem" type="button" role="menuitem" onClick={() => { setProfileOpen(false); nav('/profile') }}>
                     <Icon name="users" /> <span>Profile</span>
                   </button>

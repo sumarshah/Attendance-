@@ -1,5 +1,7 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { UpdateUserDto } from './dto/update-user.dto';
 
 const PERM_KEYS = [
   'DASHBOARD',
@@ -68,5 +70,40 @@ export class UsersService {
     }
 
     return this.getPermissions(userId);
+  }
+
+  async updateUser(userId: string, dto: UpdateUserDto) {
+    const existing = await this.prisma.user.findUnique({ where: { id: userId }, select: { id: true } });
+    if (!existing) throw new NotFoundException('User not found');
+
+    try {
+      const updated = await this.prisma.user.update({
+        where: { id: userId },
+        data: {
+          name: dto.name?.trim(),
+          email: dto.email ? dto.email.toLowerCase().trim() : undefined,
+          role: dto.role ? dto.role.toUpperCase() : undefined,
+        },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          role: true,
+          createdAt: true,
+          updatedAt: true,
+          permissions: { select: { key: true } },
+        },
+      });
+
+      return {
+        ...updated,
+        permissions: updated.permissions.map((p) => p.key),
+      };
+    } catch (e) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError) {
+        if (e.code === 'P2002') throw new BadRequestException('Email already exists');
+      }
+      throw e;
+    }
   }
 }

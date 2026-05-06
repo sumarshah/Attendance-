@@ -84,6 +84,13 @@ docker compose -f docker-compose.prod.yml --env-file .env.production ps
 Warning:
 - Always use `COMPOSE_PROJECT_NAME=attendance-final` (or the provided `start-final.ps1` on Windows).
 - If you run Compose with a different project name, Docker will create a different Postgres volume and the app will look like the database is empty.
+- This project uses the fixed Postgres volume name: `attendance-final_postgres_data`.
+
+Recovery (if data "disappears"):
+- You likely started a different compose project name and created a new empty DB volume.
+- Check volumes: `docker volume ls | grep postgres`
+- Identify which volume has data, then copy data to the correct volume (or re-attach the correct volume):
+  - Recommended: keep using `attendance-final_postgres_data` and avoid changing compose project names.
 
 Open in browser:
 - `http://YOUR_VPS_IP` (if IP only)

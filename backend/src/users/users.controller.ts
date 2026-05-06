@@ -1,8 +1,8 @@
-import { Controller, ForbiddenException, Get, Param, Put, Req } from '@nestjs/common';
+import { Body, Controller, ForbiddenException, Get, Param, Patch, Put, Req } from '@nestjs/common';
 import type { Request } from 'express';
 import { UsersService } from './users.service';
-import { Body } from '@nestjs/common';
 import { SetPermissionsDto } from './dto/set-permissions.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
 
 function requireAdmin(req: Request) {
   const role = (req as any).user?.role as string | undefined;
@@ -30,5 +30,10 @@ export class UsersController {
     requireAdmin(req);
     return this.usersService.setPermissions(id, body.permissions.map((p) => p.toUpperCase() as any));
   }
-}
 
+  @Patch(':id')
+  update(@Param('id') id: string, @Body() body: UpdateUserDto, @Req() req: Request) {
+    requireAdmin(req);
+    return this.usersService.updateUser(id, body);
+  }
+}

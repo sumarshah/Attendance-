@@ -1,3 +1,4 @@
+# LEGACY: use docker-compose.prod.yml with start-final.ps1 instead.
 services:
   postgres:
     image: postgres:16

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { FormEvent, useEffect, useMemo, useState } from 'react'
 import OsmGeofencePicker from '../components/OsmGeofencePicker'
 import Section from '../components/Section'
 import { api, ApiError } from '../lib/api'
@@ -109,6 +109,22 @@ export default function ProjectsAdmin() {
     }
   }
 
+  async function remove(project: Project) {
+    if (!confirm('Are you sure you want to delete this record?')) return
+    setBusy(true)
+    setError(null)
+    setSavedMsg(null)
+    try {
+      await api(`/projects/${project.id}`, { method: 'DELETE' })
+      if (editingId === project.id) resetToCreate()
+      await load()
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'Unknown error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   useEffect(() => {
     load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -161,9 +177,14 @@ export default function ProjectsAdmin() {
                         {p.latitude != null && p.longitude != null ? `${p.latitude}, ${p.longitude}` : '-'}
                       </td>
                       <td style={{ textAlign: 'right' }}>
-                        <button className="btn btnGhost btnSm" onClick={() => startEdit(p)} disabled={busy}>
-                          Edit
-                        </button>
+                        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                          <button className="btn btnGhost btnSm" onClick={() => startEdit(p)} disabled={busy}>
+                            Edit
+                          </button>
+                          <button className="btn btnDanger btnSm" onClick={() => remove(p)} disabled={busy}>
+                            Delete
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -184,72 +205,94 @@ export default function ProjectsAdmin() {
           <Section title={mode === 'create' ? 'Create Project' : 'Edit Project'}>
             {savedMsg ? <div className="callout good">{savedMsg}</div> : null}
 
-            <div className="formGrid">
-              <label className="field">
-                <div className="fieldLabel">Project Code</div>
-                <input className="input" value={projectCode} onChange={(e) => setProjectCode(e.target.value)} />
-              </label>
-              <label className="field">
-                <div className="fieldLabel">Project Name</div>
-                <input className="input" value={projectName} onChange={(e) => setProjectName(e.target.value)} />
-              </label>
+            <form
+              onSubmit={(e: FormEvent) => {
+                e.preventDefault()
+                void save()
+              }}
+            >
+              <div className="formGrid">
+                <label className="field">
+                  <div className="fieldLabel">Project Code</div>
+                  <input className="input" value={projectCode} onChange={(e) => setProjectCode(e.target.value)} />
+                </label>
+                <label className="field">
+                  <div className="fieldLabel">Project Name</div>
+                  <input className="input" value={projectName} onChange={(e) => setProjectName(e.target.value)} />
+                </label>
 
-              <label className="field" style={{ gridColumn: '1 / -1', marginTop: 2 }}>
-                <div className="fieldLabel">Geofence</div>
-                <select
-                  className="input"
-                  value={geofenceEnabled ? 'ON' : 'OFF'}
-                  onChange={(e) => setGeofenceEnabled(e.target.value === 'ON')}
-                >
-                  <option value="ON">Enabled</option>
-                  <option value="OFF">Disabled</option>
-                </select>
-              </label>
+                <label className="field" style={{ gridColumn: '1 / -1', marginTop: 2 }}>
+                  <div className="fieldLabel">Geofence</div>
+                  <select
+                    className="input"
+                    value={geofenceEnabled ? 'ON' : 'OFF'}
+                    onChange={(e) => setGeofenceEnabled(e.target.value === 'ON')}
+                  >
+                    <option value="ON">Enabled</option>
+                    <option value="OFF">Disabled</option>
+                  </select>
+                </label>
 
-              {geofenceEnabled ? (
-                <>
-                  <label className="field">
-                    <div className="fieldLabel">Radius (meters)</div>
-                    <input
-                      className="input"
-                      value={radiusMeters}
-                      onChange={(e) => setRadiusMeters(e.target.value)}
-                      inputMode="numeric"
-                    />
-                  </label>
-                  <label className="field">
-                    <div className="fieldLabel">Latitude</div>
-                    <input className="input" value={lat} onChange={(e) => setLat(e.target.value)} />
-                  </label>
-                  <label className="field">
-                    <div className="fieldLabel">Longitude</div>
-                    <input className="input" value={lng} onChange={(e) => setLng(e.target.value)} />
-                  </label>
-                  <div className="field" style={{ gridColumn: '1 / -1' }}>
-                    <OsmGeofencePicker
-                      center={defaultCenter}
-                      radiusMeters={numOrNull(radiusMeters) ?? 100}
-                      marker={marker}
-                      onChange={(next) => {
-                        setLat(String(next.lat))
-                        setLng(String(next.lng))
-                      }}
-                    />
-                  </div>
-                </>
-              ) : null}
-            </div>
+                {geofenceEnabled ? (
+                  <>
+                    <label className="field">
+                      <div className="fieldLabel">Radius (meters)</div>
+                      <input
+                        className="input"
+                        value={radiusMeters}
+                        onChange={(e) => setRadiusMeters(e.target.value)}
+                        inputMode="numeric"
+                      />
+                    </label>
+                    <label className="field">
+                      <div className="fieldLabel">Latitude</div>
+                      <input className="input" value={lat} onChange={(e) => setLat(e.target.value)} />
+                    </label>
+                    <label className="field">
+                      <div className="fieldLabel">Longitude</div>
+                      <input className="input" value={lng} onChange={(e) => setLng(e.target.value)} />
+                    </label>
+                    <div className="field" style={{ gridColumn: '1 / -1' }}>
+                      <OsmGeofencePicker
+                        center={defaultCenter}
+                        radiusMeters={numOrNull(radiusMeters) ?? 100}
+                        marker={marker}
+                        onChange={(next) => {
+                          setLat(String(next.lat))
+                          setLng(String(next.lng))
+                        }}
+                      />
+                    </div>
+                  </>
+                ) : null}
+              </div>
 
-            <div style={{ marginTop: 12, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-              <button className="btn btnPrimary" onClick={save} disabled={busy}>
-                {mode === 'create' ? 'Create' : 'Save'}
-              </button>
-              {mode === 'edit' ? (
-                <button className="btn btnGhost" onClick={resetToCreate} disabled={busy}>
-                  Cancel
+              <div style={{ marginTop: 12, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                <button className="btn btnPrimary" type="submit" disabled={busy}>
+                  {mode === 'create' ? 'Create' : 'Save'}
                 </button>
-              ) : null}
-            </div>
+                {mode === 'edit' ? (
+                  <>
+                    <button className="btn btnGhost" type="button" onClick={resetToCreate} disabled={busy}>
+                      Cancel
+                    </button>
+                    {editingId ? (
+                      <button
+                        className="btn btnDanger"
+                        type="button"
+                        onClick={() => {
+                          const p = rows.find((r) => r.id === editingId)
+                          if (p) void remove(p)
+                        }}
+                        disabled={busy}
+                      >
+                        Delete
+                      </button>
+                    ) : null}
+                  </>
+                ) : null}
+              </div>
+            </form>
           </Section>
         </div>
       </div>

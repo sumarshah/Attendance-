@@ -1,6 +1,8 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateEmployeeIdentifierDto } from './dto/create-employee-identifier.dto';
+import { Prisma } from '@prisma/client';
+import { UpdateEmployeeDto } from './dto/update-employee.dto';
 
 @Injectable()
 export class EmployeesService {
@@ -22,6 +24,40 @@ export class EmployeesService {
         phone: data.phone,
       },
     });
+  }
+
+  async update(id: string, dto: UpdateEmployeeDto) {
+    try {
+      return await this.prisma.employee.update({
+        where: { id },
+        data: {
+          employeeCode: dto.employeeCode?.trim(),
+          fullName: dto.fullName?.trim(),
+          phone: dto.phone === undefined ? undefined : dto.phone?.trim() || null,
+          status: dto.status,
+        },
+      });
+    } catch (e) {
+      // Avoid leaking Prisma details; return a clean 400 for common cases.
+      if (e instanceof Prisma.PrismaClientKnownRequestError) {
+        if (e.code === 'P2025') throw new BadRequestException('Employee not found');
+        if (e.code === 'P2002') throw new BadRequestException('Employee code already exists');
+      }
+      throw e;
+    }
+  }
+
+  async remove(id: string) {
+    try {
+      return await this.prisma.employee.delete({ where: { id } });
+    } catch (e) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError) {
+        if (e.code === 'P2025') throw new BadRequestException('Employee not found');
+        if (e.code === 'P2003')
+          throw new BadRequestException('Cannot delete employee: it is referenced by other records');
+      }
+      throw e;
+    }
   }
 
   listIdentifiers(employeeId: string) {

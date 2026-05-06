@@ -1,0 +1,28 @@
+CRITICAL DATA SAFETY RULES:
+
+This is an existing attendance production project. Do NOT delete, reset, recreate, rename, move, or overwrite any database, Docker volume, migration, seed, .env file, or project folder.
+
+Strict rules:
+1. Do NOT run or suggest:
+   - docker compose down -v
+   - docker volume rm
+   - docker system prune --volumes
+   - npx prisma migrate reset
+   - prisma db push --force-reset
+   - DROP DATABASE
+   - TRUNCATE
+   - DELETE FROM without my approval
+   - rm -rf
+   - recreate project
+2. Do NOT change COMPOSE_PROJECT_NAME.
+3. Always use existing Docker volume:
+   attendance-final_postgres_data
+4. Before any database-related change, stop and ask me first.
+5. Before changing files, show exact files you will modify.
+6. Never modify .env.production unless I explicitly ask.
+7. Never create duplicate project folders.
+8. Never reset seed/admin data.
+9. Only make small targeted changes.
+10. After changes, show git diff only.
+
+If any requested task requires database reset, deletion, new volume, or schema destructive migration, refuse and explain the risk.

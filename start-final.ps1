@@ -6,6 +6,39 @@ Set-Location $root
 # Ensure we always run the same stack name (prevents collisions with other compose projects).
 $env:COMPOSE_PROJECT_NAME = "attendance-final"
 
+function Get-EnvValueFromFile([string]$path, [string]$key) {
+  if (!(Test-Path -LiteralPath $path)) { return $null }
+  $line = Get-Content -LiteralPath $path | Where-Object { $_ -match ("^" + [regex]::Escape($key) + "=") } | Select-Object -Last 1
+  if (!$line) { return $null }
+  return ($line -split "=", 2)[1].Trim()
+}
+
+function Assert-NotPlaceholder([string]$name, [string]$value) {
+  if ([string]::IsNullOrWhiteSpace($value)) {
+    Write-Error "$name is missing in .env.production. Set it before starting containers."
+    exit 1
+  }
+
+  $v = $value.Trim()
+  $isPlaceholder =
+    $v -match "^__REQUIRED_" -or
+    $v -match "^__SET_" -or
+    $v -eq "change-this-in-production" -or
+    $v -eq "dev-secret-change-me"
+
+  if ($isPlaceholder) {
+    Write-Error "$name is still a placeholder in .env.production. Set a strong real value before starting containers."
+    exit 1
+  }
+}
+
+# Safety checks (prevents starting with placeholder secrets).
+$envFile = Join-Path $root ".env.production"
+$jwt = Get-EnvValueFromFile $envFile "JWT_SECRET"
+$adminPass = Get-EnvValueFromFile $envFile "ADMIN_PASSWORD"
+Assert-NotPlaceholder "JWT_SECRET" $jwt
+Assert-NotPlaceholder "ADMIN_PASSWORD" $adminPass
+
 # Auto-pick UI port: prefer 5173, but if busy, use 5174.
 $preferred = 5173
 $fallback = 5174
