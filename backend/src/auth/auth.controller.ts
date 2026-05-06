@@ -5,6 +5,8 @@ import { Public } from './public.decorator';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { PrismaService } from '../prisma/prisma.service';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -17,6 +19,29 @@ export class AuthController {
   @Post('login')
   login(@Body() body: LoginDto) {
     return this.authService.login(body);
+  }
+
+  // Always returns 200 (generic response). Basic rate limit per IP+email to slow abuse.
+  private static fpRate = new Map<string, number>();
+
+  @Public()
+  @Post('forgot-password')
+  async forgotPassword(@Body() body: ForgotPasswordDto, @Req() req: Request) {
+    const ip = (req.ip ?? 'unknown').toString();
+    const key = `${ip}:${body.email.toLowerCase().trim()}`;
+    const now = Date.now();
+    const last = AuthController.fpRate.get(key) ?? 0;
+    if (now - last < 30_000) {
+      return { message: 'If the email exists, a reset link has been sent.' };
+    }
+    AuthController.fpRate.set(key, now);
+    return this.authService.forgotPassword(body.email);
+  }
+
+  @Public()
+  @Post('reset-password')
+  resetPassword(@Body() body: ResetPasswordDto) {
+    return this.authService.resetPassword(body.token, body.newPassword);
   }
 
   // For now: allow register so you can create admins quickly.

@@ -12,6 +12,8 @@ type IconName =
   | 'bus'
   | 'shield'
   | 'arrowUpRight'
+  | 'eye'
+  | 'eyeOff'
 
 export default function Icon(props: { name: IconName; size?: number; className?: string }) {
   const size = props.size ?? 18
@@ -154,8 +156,33 @@ export default function Icon(props: { name: IconName; size?: number; className?:
           <path d="M10 7h7v7" stroke={stroke} strokeWidth={s} strokeLinecap={cap} strokeLinejoin={join} />
         </svg>
       )
+    case 'eye':
+      return (
+        <svg {...common}>
+          <path
+            d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"
+            stroke={stroke}
+            strokeWidth={s}
+            strokeLinejoin={join}
+          />
+          <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" stroke={stroke} strokeWidth={s} />
+        </svg>
+      )
+    case 'eyeOff':
+      return (
+        <svg {...common}>
+          <path
+            d="M2 12s3.5-7 10-7c2.3 0 4.2.7 5.7 1.7M22 12s-3.5 7-10 7c-2.2 0-4.1-.6-5.6-1.6"
+            stroke={stroke}
+            strokeWidth={s}
+            strokeLinecap={cap}
+            strokeLinejoin={join}
+          />
+          <path d="M9.5 9.5a3 3 0 0 0 4 4" stroke={stroke} strokeWidth={s} strokeLinecap={cap} />
+          <path d="M3 3l18 18" stroke={stroke} strokeWidth={s} strokeLinecap={cap} />
+        </svg>
+      )
     default:
       return null
   }
 }
-

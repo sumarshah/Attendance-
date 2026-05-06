@@ -4,6 +4,7 @@ import RequireAuth from './components/RequireAuth'
 import Home from './pages/Home'
 import Login from './pages/Login'
 import Logout from './pages/Logout'
+import ForgotPassword from './pages/ForgotPassword'
 import ResetPassword from './pages/ResetPassword'
 import ScreenPage from './pages/ScreenPage'
 import AttendanceKiosk from './pages/AttendanceKiosk'
@@ -24,6 +25,7 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/logout" element={<Logout />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
 
       <Route

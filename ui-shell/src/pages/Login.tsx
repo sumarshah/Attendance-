@@ -9,6 +9,7 @@ export default function Login() {
   const nav = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPass, setShowPass] = useState(false)
   const [remember, setRemember] = useState<boolean>(() => {
     try {
       return localStorage.getItem('rcc_remember_me_v1') === 'true'
@@ -141,9 +142,17 @@ export default function Login() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Password"
-                    type="password"
+                    type={showPass ? 'text' : 'password'}
                     autoComplete="current-password"
                   />
+                  <button
+                    type="button"
+                    className="iconBtn"
+                    aria-label={showPass ? 'Hide password' : 'Show password'}
+                    onClick={() => setShowPass((v) => !v)}
+                  >
+                    <Icon name={showPass ? 'eyeOff' : 'eye'} />
+                  </button>
                 </div>
               </label>
 
@@ -157,7 +166,7 @@ export default function Login() {
                   <span>Remember me</span>
                 </label>
 
-                <Link className="authLinkSm" to="/reset-password">
+                <Link className="authLinkSm" to="/forgot-password">
                   Forgot email/password?
                 </Link>
               </div>

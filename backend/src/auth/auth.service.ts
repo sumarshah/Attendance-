@@ -1,7 +1,9 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import bcrypt from 'bcryptjs';
+import { createHash, randomBytes } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
+import { sendMail } from './mailer';
 
 const ALLOWED_ROLES = new Set(['USER', 'STAFF', 'SUPERVISOR', 'HR', 'ADMIN']);
 
@@ -15,6 +17,10 @@ export class AuthService {
   private async hashPassword(password: string) {
     const salt = await bcrypt.genSalt(10);
     return bcrypt.hash(password, salt);
+  }
+
+  private hashResetToken(raw: string) {
+    return createHash('sha256').update(raw).digest('hex');
   }
 
   private async ensureSeedAdmin() {
@@ -120,5 +126,71 @@ export class AuthService {
         permissions: user.permissions.map((p) => p.key),
       },
     };
+  }
+
+  async forgotPassword(email: string) {
+    const normalized = email.toLowerCase().trim();
+    const user = await this.prisma.user.findUnique({ where: { email: normalized } });
+
+    // Always return generic success, even if user doesn't exist.
+    if (!user) return { message: 'If the email exists, a reset link has been sent.' };
+
+    const rawToken = randomBytes(32).toString('hex');
+    const resetTokenHash = this.hashResetToken(rawToken);
+    const resetTokenExpiry = new Date(Date.now() + 20 * 60 * 1000); // 20 min
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { resetTokenHash, resetTokenExpiry },
+    });
+
+    const base = (process.env.FRONTEND_ORIGIN ?? process.env.FRONTEND_ORIGINS ?? 'http://localhost:5173')
+      .split(',')[0]
+      .trim();
+    const link = `${base.replace(/\/$/, '')}/reset-password?token=${rawToken}`;
+
+    const mail = {
+      to: user.email,
+      subject: 'RCC Attendance Password Reset',
+      text: `Use this link to reset your password (valid for 20 minutes):\n\n${link}\n\nIf you did not request this, ignore this email.`,
+    };
+
+    const sent = await sendMail(mail);
+    if (!sent.sent) {
+      // Dev fallback: log link only.
+      // eslint-disable-next-line no-console
+      console.log(`[password-reset] ${user.email} -> ${link}`);
+    }
+
+    return { message: 'If the email exists, a reset link has been sent.' };
+  }
+
+  async resetPassword(token: string, newPassword: string) {
+    const raw = (token ?? '').trim();
+    if (!raw) throw new BadRequestException('Invalid or expired token');
+
+    const resetTokenHash = this.hashResetToken(raw);
+    const now = new Date();
+
+    const user = await this.prisma.user.findFirst({
+      where: {
+        resetTokenHash,
+        resetTokenExpiry: { gt: now },
+      },
+    });
+
+    if (!user) throw new BadRequestException('Invalid or expired token');
+
+    const passwordHash = await this.hashPassword(newPassword);
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        password: passwordHash,
+        resetTokenHash: null,
+        resetTokenExpiry: null,
+      },
+    });
+
+    return { message: 'Password reset successful' };
   }
 }

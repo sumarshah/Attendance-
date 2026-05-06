@@ -1,15 +1,11 @@
-import { useMemo, useState } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { useState } from 'react'
+import { Link } from 'react-router-dom'
+import Icon from '../components/Icon'
 import rccLogoUrl from '../assets/rcc-logo-2018.png'
 import { ApiError, api } from '../lib/api'
 
-export default function ResetPassword() {
-  const nav = useNavigate()
-  const [sp] = useSearchParams()
-  const token = useMemo(() => (sp.get('token') ?? '').trim(), [sp])
-
-  const [p1, setP1] = useState('')
-  const [p2, setP2] = useState('')
+export default function ForgotPassword() {
+  const [email, setEmail] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [done, setDone] = useState(false)
@@ -18,14 +14,12 @@ export default function ResetPassword() {
     setBusy(true)
     setError(null)
     try {
-      if (!token) throw new Error('Missing token')
-      if (p1.length < 6) throw new Error('Password must be at least 6 characters')
-      if (p1 !== p2) throw new Error('Passwords do not match')
-      await api('/auth/reset-password', { method: 'POST', body: JSON.stringify({ token, newPassword: p1 }) })
+      await api('/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email: email.trim() }) })
       setDone(true)
-      setTimeout(() => nav('/login'), 900)
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : e instanceof Error ? e.message : 'Reset failed')
+      // Still show generic success even on most errors, to avoid email enumeration.
+      if (e instanceof ApiError && e.status >= 500) setError('Temporary error. Please try again.')
+      else setDone(true)
     } finally {
       setBusy(false)
     }
@@ -49,22 +43,13 @@ export default function ResetPassword() {
             <div className="authCardHeader">
               <div>
                 <div className="kicker">Account Help</div>
-                <h2 className="h1">Reset Password</h2>
+                <h2 className="h1">Forgot Password</h2>
               </div>
               <span className="pill pillBrand">RCC</span>
             </div>
 
-            {!token ? (
-              <div className="callout">
-                Missing reset token. Please use the link from the reset email.
-                <div style={{ marginTop: 10 }}>
-                  <Link className="btn btnGhost" to="/forgot-password">
-                    Request a new link
-                  </Link>
-                </div>
-              </div>
-            ) : done ? (
-              <div className="callout good">Password updated. Redirecting to login…</div>
+            {done ? (
+              <div className="callout good">If the email exists, a reset link has been sent.</div>
             ) : (
               <form
                 onSubmit={(e) => {
@@ -73,17 +58,16 @@ export default function ResetPassword() {
                 }}
               >
                 <label className="field">
-                  <div className="fieldLabel">New Password</div>
-                  <input className="input" type="password" value={p1} onChange={(e) => setP1(e.target.value)} />
-                </label>
-                <label className="field">
-                  <div className="fieldLabel">Confirm Password</div>
-                  <input className="input" type="password" value={p2} onChange={(e) => setP2(e.target.value)} />
+                  <div className="fieldLabel">Email</div>
+                  <div className="inputRow">
+                    <Icon name="users" />
+                    <input className="input inputFlat" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" />
+                  </div>
                 </label>
 
                 <div className="authActionsPro authActionsCenter" style={{ marginTop: 12 }}>
                   <button className="btn btnPrimary" type="submit" disabled={busy}>
-                    Reset Password
+                    Send Reset Link
                   </button>
                 </div>
               </form>
@@ -92,7 +76,7 @@ export default function ResetPassword() {
             {error ? <div className="callout bad">{error}</div> : null}
 
             <div style={{ marginTop: 12, display: 'flex', justifyContent: 'center' }}>
-              <Link className="btn btnPrimary" to="/login">
+              <Link className="btn btnGhost" to="/login">
                 Back to Sign in
               </Link>
             </div>
@@ -102,3 +86,4 @@ export default function ResetPassword() {
     </div>
   )
 }
+
